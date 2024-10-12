@@ -1,52 +1,45 @@
 import openai
 import streamlit as st
 
- # Set your OpenAI API key
+# Access the API key from Streamlit secrets
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# Function to generate a response
+# Function to generate text with continuous stream
 def generate_text(prompt):
+    # Initialize an empty string for the response
+    response_text = ""
+
+    # Create a placeholder to update the message progressively
+    chat_placeholder = st.empty()
+
+    # Stream the response from the API
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": "You are well read journalist and are aware of the recent performance of India in Paralympics."},
+            {"role": "system", "content": "You are a well-read journalist aware of India's recent performance in the 2024 Paralympics."},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=50,  # Adjust token length as needed
-        stream=True  # Enable streaming
+        max_tokens=200,  # Adjust token length as needed
+        stream=True
     )
-    return response
 
-# Streamlit setup
-st.title("Paralympics Chatbot")
+    # Update the response in chunks to simulate streaming
+    for chunk in response:
+        # Extract and append the latest part of the response
+        response_text += chunk['choices'][0]['delta'].get('content', '')
+        chat_placeholder.write(response_text)
 
-# Session state to store chat history
-if 'messages' not in st.session_state:
-    st.session_state['messages'] = []
+    # Return final response text
+    return response_text
 
-# Chat input
-user_input = st.text_input("You: ", placeholder="Ask me about India's performance in the Paralympics...")
+# Streamlit UI setup
+st.title("My first bot")
+st.write("anything ")
 
+# User input
+user_input = st.text_input("You:", placeholder="Type your question here...")
+
+# If there's a user input, get the response from the chatbot
 if user_input:
-    # Append user's message to chat history
-    st.session_state['messages'].append({"role": "user", "content": user_input})
-
-    # Get chatbot's response
-    with st.spinner("Bot is responding..."):
-        # Streaming the response
-        response_stream = generate_text(user_input)
-        bot_response = ""
-        for chunk in response_stream:
-            if 'choices' in chunk:
-                chunk_text = chunk['choices'][0]['delta'].get('content', '')
-                bot_response += chunk_text
-                st.markdown(bot_response + "▌")  # Adding a streaming cursor effect
-        st.session_state['messages'].append({"role": "assistant", "content": bot_response})
-
-# Display conversation history
-if st.session_state['messages']:
-    for message in st.session_state['messages']:
-        if message['role'] == 'user':
-            st.write(f"**You**: {message['content']}")
-        else:
-            st.write(f"**Bot**: {message['content']}")
+    st.write("You: " + user_input)
+    generate_text(user_input)
